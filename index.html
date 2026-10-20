@@ -1,32 +1,363 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VoiceCraft Studio — AI Text to Speech &amp; Voice Suite</title>
+    <meta name="description" content="Studio-grade Text to Speech web app with natural system voices, pitch &amp; speed modulation, real-time word highlighting, voice dictation, and audio visualizer.">
 
-    <!-- Google Font -->
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
-
-    <title>Text To Speech</title>
+    <!-- Stylesheets & Fonts -->
     <link rel="stylesheet" href="style.css">
+
+    <!-- Google Fonts: Poppins -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,600&display=swap" rel="stylesheet">
+
+    <!-- Font Awesome 6 Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+
+    <!-- DaisyUI 4 Component Library -->
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.23/dist/full.min.css" rel="stylesheet" type="text/css" />
+
+    <!-- Tailwind CSS 3 CDN with Custom Config -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        studio: {
+                            purple: '#490d61',
+                            indigo: '#010758',
+                            orange: '#ff3d00',
+                            cyan: '#00f0ff',
+                            pink: '#ff00cc'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Poppins', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+                        poppins: ['Poppins', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
 </head>
-<body>
 
-    <div class="hero">
-        <h1>Text to Speech 🎙️</h1>
+<body class="font-sans hero-wrapper text-white min-h-screen flex flex-col justify-between antialiased selection:bg-pink-500 selection:text-white">
 
-        <textarea placeholder="Write anything here..."></textarea>
+    <!-- ============================================== -->
+    <!-- 1. STICKY HEADER & TOP BRANDING                -->
+    <!-- ============================================== -->
+    <header class="border-b border-white/10 bg-slate-950/70 backdrop-blur-xl sticky top-0 z-30">
+        <div class="container mx-auto px-4 py-3 flex items-center justify-between gap-4">
+            
+            <!-- Brand Logo -->
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-amber-500 via-rose-500 to-purple-600 flex items-center justify-center text-white shadow-lg shadow-rose-500/20">
+                    <i class="fa-solid fa-microphone-lines text-lg"></i>
+                </div>
+                <div>
+                    <div class="flex items-center gap-1.5">
+                        <span class="text-xl font-extrabold tracking-tight bg-gradient-to-r from-white via-amber-200 to-rose-400 bg-clip-text text-transparent">VoiceCraft Studio</span>
+                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30">PRO</span>
+                    </div>
+                    <p class="text-[10px] text-white/50 tracking-wider uppercase font-semibold">AI Speech Synthesis Suite</p>
+                </div>
+            </div>
 
-        <div class="raw">
-            <select></select>
+            <!-- Top Center Status Badge -->
+            <div class="hidden md:flex items-center gap-3">
+                <span id="speechStatusPill" class="px-3 py-1 rounded-full text-xs font-semibold bg-white/10 text-white/70 border border-white/10 flex items-center gap-1.5">
+                    <span class="w-2 h-2 rounded-full bg-slate-400"></span> Ready
+                </span>
+                <span id="availableVoiceCount" class="text-xs text-white/50 font-medium">Detecting Voices...</span>
+            </div>
 
-            <button>
-                <img src="./images/play.png" alt="">
-                <span>Convert to Speech</span>
+            <!-- Top Right Action Controls -->
+            <div class="flex items-center gap-2">
+                <!-- Speech to Text / Dictate Button -->
+                <button 
+                    id="dictateMicBtn" 
+                    onclick="toggleDictation()"
+                    title="Voice Dictation (Speech to Text)"
+                    class="btn btn-sm rounded-xl bg-white/10 hover:bg-white/20 text-white/90 border-white/15 text-xs font-semibold backdrop-blur transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-microphone text-rose-400"></i>
+                    <span class="hidden sm:inline">Dictate</span>
+                </button>
+
+                <!-- Copy Text Button -->
+                <button 
+                    onclick="copyText()" 
+                    title="Copy Text to Clipboard"
+                    class="btn btn-sm btn-square rounded-xl bg-white/10 hover:bg-white/20 text-white/90 border-white/15 backdrop-blur transition">
+                    <i class="fa-regular fa-copy text-sm"></i>
+                </button>
+
+                <!-- Export Text File -->
+                <button 
+                    onclick="exportTextAsFile()" 
+                    title="Export as Text File"
+                    class="btn btn-sm btn-square rounded-xl bg-white/10 hover:bg-white/20 text-white/90 border-white/15 backdrop-blur transition">
+                    <i class="fa-solid fa-arrow-down-to-bracket text-sm"></i>
+                </button>
+            </div>
+
+        </div>
+    </header>
+
+    <!-- ============================================== -->
+    <!-- 2. MAIN APPLICATION WORKSPACE                  -->
+    <!-- ============================================== -->
+    <main class="container mx-auto px-4 py-8 max-w-6xl flex-grow z-10">
+        
+        <!-- Quick Sample Presets Bar -->
+        <div class="flex items-center gap-2 mb-6 overflow-x-auto pb-1 text-xs no-scrollbar">
+            <span class="text-white/40 text-[11px] font-semibold whitespace-nowrap"><i class="fa-solid fa-wand-magic-sparkles text-amber-400 mr-1"></i> Quick Presets:</span>
+            <button onclick="insertPreset('pitch')" class="px-3.5 py-1.5 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 text-white/90 hover:text-white whitespace-nowrap transition">
+                🚀 Studio Pitch
+            </button>
+            <button onclick="insertPreset('motivation')" class="px-3.5 py-1.5 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 text-white/90 hover:text-white whitespace-nowrap transition">
+                💡 Motivation Quote
+            </button>
+            <button onclick="insertPreset('tech')" class="px-3.5 py-1.5 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 text-white/90 hover:text-white whitespace-nowrap transition">
+                🤖 AI &amp; Tech News
+            </button>
+            <button onclick="insertPreset('twister')" class="px-3.5 py-1.5 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 text-white/90 hover:text-white whitespace-nowrap transition">
+                🎭 Tongue Twister
+            </button>
+            <button onclick="insertPreset('meditation')" class="px-3.5 py-1.5 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 text-white/90 hover:text-white whitespace-nowrap transition">
+                🧘 Guided Breathing
             </button>
         </div>
-    </div>
 
+        <!-- Two Column Studio Layout -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+            
+            <!-- Left Column: Input Text Area & Karaoke Read-Along -->
+            <div class="lg:col-span-7 space-y-4">
+                
+                <div class="bg-slate-900/80 border border-white/15 rounded-3xl p-6 backdrop-blur-xl shadow-2xl relative">
+                    
+                    <!-- Text Area Header -->
+                    <div class="flex items-center justify-between mb-3 text-xs text-white/60">
+                        <span class="font-bold uppercase tracking-wider text-white/70">Script &amp; Narration Input</span>
+                        <div class="flex items-center gap-3">
+                            <span id="charCountDisplay">0 characters</span>
+                            <span>•</span>
+                            <span id="wordCountDisplay">0 words</span>
+                            <span>•</span>
+                            <span id="estTimeDisplay" class="text-cyan-300 font-bold">~0s read</span>
+                        </div>
+                    </div>
+
+                    <!-- Main Editable Textarea -->
+                    <textarea 
+                        id="textInput" 
+                        rows="8"
+                        placeholder="Write or paste anything here... You can also click 'Dictate' above to speak into your microphone!"
+                        class="w-full bg-slate-950/60 text-white placeholder-white/30 text-sm p-4 rounded-2xl border border-white/10 focus:border-cyan-400 focus:outline-none transition leading-relaxed resize-y min-h-[220px]"
+                    >Welcome to VoiceCraft Studio! We transform raw written text into studio-grade vocal experiences with customizable speed, acoustic pitch modulation, and real-time synchronized karaoke tracking.</textarea>
+
+                    <!-- Synchronized Karaoke Read-Along View (Active during speech) -->
+                    <div id="karaokeDisplay" class="hidden w-full bg-slate-950/80 text-white text-base p-5 rounded-2xl border border-cyan-400/30 overflow-y-auto max-h-[300px] karaoke-display">
+                        <!-- Populated by JavaScript with highlighted spans -->
+                    </div>
+
+                    <!-- Textarea Footer Actions -->
+                    <div class="flex items-center justify-between pt-3 mt-2 border-t border-white/10 text-xs">
+                        <div class="flex items-center gap-2">
+                            <button onclick="clearText()" class="text-white/40 hover:text-red-400 transition flex items-center gap-1">
+                                <i class="fa-regular fa-trash-can"></i> Clear
+                            </button>
+                        </div>
+                        <div class="text-[11px] text-white/40">
+                            Press <kbd class="px-1.5 py-0.5 rounded bg-white/10 font-mono text-[10px]">Ctrl + Enter</kbd> to speak
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Recent Spoken Clips / History Box -->
+                <div class="bg-slate-900/60 border border-white/10 rounded-3xl p-5 backdrop-blur-xl">
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-white/70">
+                            <i class="fa-solid fa-clock-rotate-left text-cyan-400"></i>
+                            <span>Recent Audio Clips</span>
+                        </div>
+                        <button onclick="clearAllHistory()" class="text-[11px] text-white/40 hover:text-white transition">
+                            Clear History
+                        </button>
+                    </div>
+
+                    <div id="historyListContainer" class="space-y-2 max-h-48 overflow-y-auto pr-1">
+                        <!-- Injected via JavaScript -->
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Right Column: Voice Engine Controls & Acoustic Sliders -->
+            <div class="lg:col-span-5 space-y-6">
+                
+                <div class="bg-slate-900/80 border border-white/15 rounded-3xl p-6 backdrop-blur-xl shadow-2xl space-y-6">
+                    
+                    <!-- 1. Voice Selector & Language Filter -->
+                    <div class="space-y-3">
+                        <div class="flex items-center justify-between">
+                            <label class="text-xs font-bold uppercase tracking-wider text-white/70 block">Select Voice</label>
+                            <!-- Filter Language -->
+                            <select id="languageFilter" class="select select-xs rounded-lg bg-white/10 text-white/90 border-white/15 text-[11px]">
+                                <option value="all">🌐 All Languages</option>
+                            </select>
+                        </div>
+
+                        <div class="relative">
+                            <select id="voiceSelect" class="select select-bordered w-full rounded-2xl bg-slate-950/80 text-white border-white/15 text-xs font-medium focus:border-rose-500 focus:outline-none">
+                                <option>Loading system voices...</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- 2. Audio Waveform Visualizer -->
+                    <div class="bg-slate-950/60 p-3 rounded-2xl border border-white/10">
+                        <div class="flex items-center justify-between mb-2 text-[10px] uppercase font-bold text-white/40 tracking-wider">
+                            <span>Acoustic Frequency Monitor</span>
+                            <span class="text-cyan-400"><i class="fa-solid fa-wave-square mr-1"></i> Live</span>
+                        </div>
+                        <canvas id="waveformCanvas" class="w-full h-12 rounded-lg"></canvas>
+                    </div>
+
+                    <!-- 3. Sliders (Speed, Pitch, Volume) -->
+                    <div class="space-y-4 pt-1">
+                        
+                        <!-- Rate / Speed Slider -->
+                        <div class="space-y-1.5">
+                            <div class="flex justify-between items-center text-xs">
+                                <span class="font-semibold text-white/80">Reading Speed (Rate)</span>
+                                <span id="speedDisplay" class="font-mono font-bold text-amber-400">1.00x</span>
+                            </div>
+                            <input 
+                                id="speedSlider" 
+                                type="range" 
+                                min="0.5" 
+                                max="2.0" 
+                                step="0.05" 
+                                value="1.0" 
+                                class="range range-xs range-warning" 
+                            />
+                            <!-- Quick Speed Pills -->
+                            <div class="flex justify-between text-[10px] text-white/40 font-mono pt-1">
+                                <button onclick="setSpeedPreset(0.75)" class="hover:text-amber-400 transition">0.75x</button>
+                                <button onclick="setSpeedPreset(1.0)" class="hover:text-amber-400 font-bold text-white/70 transition">1.0x (Normal)</button>
+                                <button onclick="setSpeedPreset(1.25)" class="hover:text-amber-400 transition">1.25x</button>
+                                <button onclick="setSpeedPreset(1.5)" class="hover:text-amber-400 transition">1.5x</button>
+                                <button onclick="setSpeedPreset(2.0)" class="hover:text-amber-400 transition">2.0x</button>
+                            </div>
+                        </div>
+
+                        <!-- Pitch Slider -->
+                        <div class="space-y-1.5">
+                            <div class="flex justify-between items-center text-xs">
+                                <span class="font-semibold text-white/80">Voice Pitch</span>
+                                <span id="pitchDisplay" class="font-mono font-bold text-rose-400">1.0</span>
+                            </div>
+                            <input 
+                                id="pitchSlider" 
+                                type="range" 
+                                min="0.5" 
+                                max="1.5" 
+                                step="0.1" 
+                                value="1.0" 
+                                class="range range-xs range-secondary" 
+                            />
+                            <div class="flex justify-between text-[10px] text-white/40 pt-0.5">
+                                <span>Deep (0.5)</span>
+                                <span>Natural (1.0)</span>
+                                <span>High (1.5)</span>
+                            </div>
+                        </div>
+
+                        <!-- Volume Slider -->
+                        <div class="space-y-1.5">
+                            <div class="flex justify-between items-center text-xs">
+                                <span class="font-semibold text-white/80">Volume Output</span>
+                                <span id="volumeDisplay" class="font-mono font-bold text-cyan-400">100%</span>
+                            </div>
+                            <input 
+                                id="volumeSlider" 
+                                type="range" 
+                                min="0.1" 
+                                max="1.0" 
+                                step="0.05" 
+                                value="1.0" 
+                                class="range range-xs range-accent" 
+                            />
+                        </div>
+
+                    </div>
+
+                    <!-- 4. Main Audio Playback Action Buttons -->
+                    <div class="pt-2 space-y-3">
+                        <!-- Big Play / Convert Button -->
+                        <button 
+                            id="playBtn" 
+                            onclick="speakText()" 
+                            class="btn-studio-primary w-full py-4 rounded-2xl text-white font-extrabold text-sm sm:text-base flex items-center justify-center gap-3 shadow-xl">
+                            <img src="./images/play.png" alt="Play" class="w-4 h-4 object-contain">
+                            <span>Convert to Speech</span>
+                        </button>
+
+                        <!-- Pause Button (Visible when speaking) -->
+                        <button 
+                            id="pauseBtn" 
+                            onclick="pauseSpeech()" 
+                            class="hidden w-full py-3.5 rounded-2xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-sm flex items-center justify-center gap-2 shadow-lg transition">
+                            <i class="fa-solid fa-pause"></i>
+                            <span>Pause Speech</span>
+                        </button>
+
+                        <!-- Stop Button -->
+                        <button 
+                            id="stopBtn" 
+                            disabled
+                            onclick="stopSpeech()" 
+                            class="w-full py-2.5 rounded-xl bg-white/10 hover:bg-white/20 disabled:opacity-40 disabled:hover:bg-white/10 text-white text-xs font-semibold flex items-center justify-center gap-2 transition">
+                            <i class="fa-solid fa-stop text-red-400"></i>
+                            <span>Stop / Cancel Speech</span>
+                        </button>
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- ============================================== -->
+    <!-- FLOATING TOAST CONTAINER                       -->
+    <!-- ============================================== -->
+    <div id="toastContainer" class="fixed bottom-6 right-6 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none"></div>
+
+    <!-- ============================================== -->
+    <!-- FOOTER                                         -->
+    <!-- ============================================== -->
+    <footer class="border-t border-white/10 bg-slate-950/80 py-6 text-center text-xs text-white/40 z-10">
+        <div class="container mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <p>&copy; 2026 VoiceCraft Studio. Native Speech Engine with zero external server latency.</p>
+            <div class="flex items-center gap-4 text-xs text-white/60">
+                <span><i class="fa-solid fa-bolt text-amber-400 mr-1"></i> Low Latency</span>
+                <span><i class="fa-solid fa-shield-halved text-emerald-400 mr-1"></i> 100% Client-Side Privacy</span>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Main Application Logic -->
     <script src="script.js"></script>
 </body>
+
 </html>
