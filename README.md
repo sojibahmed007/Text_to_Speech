@@ -67,9 +67,9 @@ Open `index.html` directly in your web browser, or launch a local server:
 
 ```powershell
 cd C:\Users\Sojib\.gemini\antigravity\scratch\Text_to_Speech
-python -m http.server 6000
+python -m http.server 5500
 ```
-Then visit `http://localhost:6000` in your browser.
+Then visit `http://localhost:5500` in your browser.
 
 ---
 
